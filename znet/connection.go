@@ -1,9 +1,10 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
-	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -31,16 +32,34 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
-		buf := make([]byte, utils.GlobalObject.MaxPackageSize)
-		_, err := c.Conn.Read(buf)
+		//创建拆包对象
+		dp := NewDataPack()
+		headData := make([]byte, dp.GetHeadLen())
+		_, err := io.ReadFull(c.GetTCPConnection(), headData)
 		if err != nil {
-			fmt.Println(err)
-			break
+			fmt.Println("read msg head error", err)
+			return
 		}
+		msg, err := dp.UnPack(headData)
+		if err != nil {
+			fmt.Println("unpack error", err)
+			return
+		}
+
+		data := make([]byte, msg.GetDataLen())
+		if msg.GetDataLen() > 0 {
+			_, err := io.ReadFull(c.GetTCPConnection(), data)
+			if err != nil {
+				fmt.Println("read msg data error", err)
+				return
+			}
+		}
+
+		msg.SetData(data)
 
 		req := Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 
 		//执行注册的路由方法
@@ -81,7 +100,22 @@ func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-func (c *Connection) Send(data []byte) error {
-	//TODO implement me
-	panic("implement me")
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.isClosed == true {
+		return errors.New("connection closed")
+	}
+
+	dp := NewDataPack()
+	binary, err := dp.Pack(NewMsgPackage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack error ", err)
+		return err
+	}
+
+	_, err = c.Conn.Write(binary)
+	if err != nil {
+		fmt.Println("write msg error", err)
+		return err
+	}
+	return nil
 }
