@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"net"
+	"zinx/utils"
 	"zinx/ziface"
 )
 
@@ -21,7 +22,9 @@ type Server struct {
 }
 
 func (s *Server) Start() {
-	fmt.Printf("[Start] Server Listener at IP:%s,Port %d is starting\n", s.IP, s.Port)
+	fmt.Printf("[Zinx]Server Name:%s,listener at Ip:%s,Port:%d is starting...\n", utils.GlobalObject.Name, utils.GlobalObject.Host, utils.GlobalObject.TcpPort)
+	fmt.Printf("[Zinx]Version:%s,MaxConn:%d,MaxPackageSize:%d\n", utils.GlobalObject.Version, utils.GlobalObject.MaxConn, utils.GlobalObject.MaxPackageSize)
+
 	go func() {
 		//1.获取TCP的addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
@@ -79,10 +82,9 @@ func (s *Server) AddRouter(router ziface.IRouter) {
 // NewServer 初始化Server模块的方法
 func NewServer(name string) ziface.IServer {
 	return &Server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8999,
-		Router:    nil,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 	}
 }
