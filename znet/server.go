@@ -26,6 +26,9 @@ func (s *Server) Start() {
 	fmt.Printf("[Zinx]Version:%s,MaxConn:%d,MaxPackageSize:%d\n", utils.GlobalObject.Version, utils.GlobalObject.MaxConn, utils.GlobalObject.MaxPackageSize)
 
 	go func() {
+		//0.开启消息队列
+		s.MsgHandler.StartWorkerPool()
+
 		//1.获取TCP的addr
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
