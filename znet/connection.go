@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"zinx/utils"
 	"zinx/ziface"
 )
@@ -18,6 +19,35 @@ type Connection struct {
 	ExitChan   chan bool
 	msgChan    chan []byte        //无缓冲通道,用于读写goroutine之间的消息通信
 	MsgHandler ziface.IMsgHandler //消息的管理msgId和对应处理业务API的关系
+	//连接属性
+	property map[string]interface{}
+	//保护连接属性的锁
+	propertyLock sync.RWMutex
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	c.property[key] = value
+}
+
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if v, ok := c.property[key]; ok {
+		return v, nil
+	} else {
+		return nil, errors.New("no property")
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
 
 func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, handler ziface.IMsgHandler) *Connection {
@@ -29,6 +59,7 @@ func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, hand
 		MsgHandler: handler,
 		msgChan:    make(chan []byte),
 		ExitChan:   make(chan bool, 1),
+		property:   make(map[string]interface{}),
 	}
 
 	c.TcpServer.GetConnMgr().Add(c)
