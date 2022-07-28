@@ -10,6 +10,8 @@ import (
 )
 
 type Connection struct {
+	//当前Conn属于哪个server
+	TcpServer  ziface.IServer
 	Conn       *net.TCPConn
 	ConnID     uint32
 	isClosed   bool
@@ -18,8 +20,9 @@ type Connection struct {
 	MsgHandler ziface.IMsgHandler //消息的管理msgId和对应处理业务API的关系
 }
 
-func NewConnection(conn *net.TCPConn, connID uint32, handler ziface.IMsgHandler) *Connection {
-	return &Connection{
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, handler ziface.IMsgHandler) *Connection {
+	c := &Connection{
+		TcpServer:  server,
 		Conn:       conn,
 		ConnID:     connID,
 		isClosed:   false,
@@ -27,6 +30,10 @@ func NewConnection(conn *net.TCPConn, connID uint32, handler ziface.IMsgHandler)
 		msgChan:    make(chan []byte),
 		ExitChan:   make(chan bool, 1),
 	}
+
+	c.TcpServer.GetConnMgr().Add(c)
+
+	return c
 }
 
 func (c *Connection) StartReader() {
@@ -101,6 +108,8 @@ func (c *Connection) Start() {
 	go c.StartReader()
 	//启动从当前连接的写数据业务
 	go c.StartWriter()
+
+	c.TcpServer.CallOnConnStart(c)
 }
 
 func (c *Connection) Stop() {
@@ -111,10 +120,12 @@ func (c *Connection) Stop() {
 	}
 
 	c.isClosed = true
-	//关闭socket连接
-	c.Conn.Close()
 
-	close(c.ExitChan)
+	c.TcpServer.CallOnConnStop(c)
+
+	c.TcpServer.GetConnMgr().Remove(c)
+	//关闭socket连接
+	_ = c.Conn.Close()
 }
 
 func (c *Connection) GetTCPConnection() *net.TCPConn {

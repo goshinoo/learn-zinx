@@ -19,6 +19,34 @@ type Server struct {
 	Port int
 	//当前的server的消息管理模块,绑定MsgId和对应处理业务API关系\
 	MsgHandler ziface.IMsgHandler
+	//该server的连接管理器
+	ConnMgr ziface.IConnManager
+	//该server创建连接之后自动调用的Hook函数
+	OnConnStart func(conn ziface.IConnection)
+	//该server关闭连接之前自动调用的Hook函数
+	OnConnStop func(conn ziface.IConnection)
+}
+
+func (s *Server) SetOnConnStart(f func(connection ziface.IConnection)) {
+	s.OnConnStart = f
+}
+
+func (s *Server) SetOnConnStop(f func(connection ziface.IConnection)) {
+	s.OnConnStop = f
+}
+
+func (s *Server) CallOnConnStart(connection ziface.IConnection) {
+	if s.OnConnStart != nil {
+		fmt.Println("Call OnConnStart()...")
+		s.OnConnStart(connection)
+	}
+}
+
+func (s *Server) CallOnConnStop(connection ziface.IConnection) {
+	if s.OnConnStop != nil {
+		fmt.Println("Call OnConnStop()...")
+		s.OnConnStop(connection)
+	}
 }
 
 func (s *Server) Start() {
@@ -54,7 +82,15 @@ func (s *Server) Start() {
 				continue
 			}
 
-			dealConn := NewConnection(conn, cid, s.MsgHandler)
+			//设置最大连接个数的判断,如果超过最大连接数,则关闭此链接
+			if s.ConnMgr.Len() >= utils.GlobalObject.MaxConn {
+				//todo 给客户端响应错误
+				fmt.Println("too many conns,maxConn = ", utils.GlobalObject.MaxConn)
+				_ = conn.Close()
+				continue
+			}
+
+			dealConn := NewConnection(s, conn, cid, s.MsgHandler)
 			cid++
 
 			//启动当前的连接业务
@@ -63,8 +99,13 @@ func (s *Server) Start() {
 	}()
 }
 
+func (s *Server) GetConnMgr() ziface.IConnManager {
+	return s.ConnMgr
+}
+
 func (s *Server) Stop() {
-	//TODO
+	fmt.Println("[STOP] Zinx server name ", s.Name)
+	s.ConnMgr.ClearConn()
 }
 
 func (s *Server) Serve() {
@@ -83,12 +124,13 @@ func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
 }
 
 // NewServer 初始化Server模块的方法
-func NewServer(name string) ziface.IServer {
+func NewServer() ziface.IServer {
 	return &Server{
 		Name:       utils.GlobalObject.Name,
 		IPVersion:  "tcp4",
 		IP:         utils.GlobalObject.Host,
 		Port:       utils.GlobalObject.TcpPort,
 		MsgHandler: NewMsgHandler(),
+		ConnMgr:    NewConnManager(),
 	}
 }
