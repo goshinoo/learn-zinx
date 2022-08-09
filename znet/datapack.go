@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"zinx/utils"
-	"zinx/ziface"
+	"github.com/goshinoo/learn-zinx/utils"
+	"github.com/goshinoo/learn-zinx/ziface"
 )
 
 type DataPack struct{}

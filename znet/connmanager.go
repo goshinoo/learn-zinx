@@ -3,8 +3,8 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"github.com/goshinoo/learn-zinx/ziface"
 	"sync"
-	"zinx/ziface"
 )
 
 // ConnManager 连接管理模块

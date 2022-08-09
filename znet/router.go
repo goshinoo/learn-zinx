@@ -1,7 +1,7 @@
 package znet
 
 import (
-	"zinx/ziface"
+	"github.com/goshinoo/learn-zinx/ziface"
 )
 
 // BaseRouter 实现router时,先嵌入BaseRouter基类,根据需要对这个基类的方法进行重写

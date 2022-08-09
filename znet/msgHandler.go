@@ -2,8 +2,8 @@ package znet
 
 import (
 	"fmt"
-	"zinx/utils"
-	"zinx/ziface"
+	"github.com/goshinoo/learn-zinx/utils"
+	"github.com/goshinoo/learn-zinx/ziface"
 )
 
 type MsgHandler struct {
